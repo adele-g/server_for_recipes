@@ -2,12 +2,14 @@ package task.recipe;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.lang.reflect.Array;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Service
 public class RecipeService implements IRecipe{
@@ -20,11 +22,6 @@ public class RecipeService implements IRecipe{
 	}
 
 	@Override
-	public List<Recipe> getAllUsers() {
-		return repository.findAll();
-	}
-
-	@Override
 	public Optional<Recipe> findById(long id) {
 		return repository.findById(id);
 	}
@@ -32,15 +29,36 @@ public class RecipeService implements IRecipe{
 	@Override
 	public HashMap<String, Long> save(Recipe recipe) {
 		HashMap<String, Long> result = new HashMap<>();
+		recipe.setDate(LocalDateTime.now());
 		result.put("id", repository.save(recipe).getId());
 		return result;
 	}
 
 	@Override
-	public void deleteById(long id) {
+	public ResponseEntity<HttpStatus> deleteById(long id) {
 		Optional<Recipe> recipe = repository.findById(id);
 		recipe.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 		repository.deleteById(id);
-		throw new ResponseStatusException(HttpStatus.NO_CONTENT);
+		return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+	}
+
+	@Override
+	public List<Recipe> searchByName(String name, String nameOfColumn) {
+		ArrayList<Recipe> result = new ArrayList<>();
+
+		repository.findAll().forEach(recipe -> {
+			if (nameOfColumn.equals("category")) {
+				if (recipe.getCategory().equalsIgnoreCase(name)) {
+					result.add(recipe);
+				}
+			}
+			else if (nameOfColumn.equals("name")) {
+				if (recipe.getName().toLowerCase().contains(name.toLowerCase())) {
+					result.add(recipe);
+				}
+			}
+		});
+		result.sort(Comparator.comparing(Recipe::getDate).reversed());
+		return result;
 	}
 }

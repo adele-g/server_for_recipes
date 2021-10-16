@@ -1,13 +1,18 @@
 package task.recipe;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
 public interface IRecipe {
 
-	List<Recipe> getAllUsers();
 	Optional<Recipe> findById(long id);
 	HashMap<String, Long> save(Recipe user);
-	void deleteById(long id);
+	ResponseEntity<HttpStatus> deleteById(long id);
+	List<Recipe> searchByName(String name, String nameOfColumn);
+
 }
