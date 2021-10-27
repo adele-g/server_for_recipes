@@ -1,19 +1,16 @@
 package task.recipe;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.springframework.stereotype.Component;
+import org.hibernate.annotations.GenericGenerator;
 import org.springframework.validation.annotation.Validated;
 
 import javax.persistence.*;
-import javax.persistence.criteria.CriteriaBuilder;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-import java.sql.Array;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Entity
@@ -22,7 +19,8 @@ import java.util.List;
 public class Recipe {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.AUTO, generator = "seq")
+	@GenericGenerator(name = "seq", strategy="increment")
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private long id;
 
@@ -57,16 +55,29 @@ public class Recipe {
 	@Size(min = 1)
 	private List<String> directions = new ArrayList<>();
 
+	@Column
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+	private String email;
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
 	public Recipe() {}
 
 	public Recipe(String name, String category, LocalDateTime date, String description,
-	              List<String> ingredients, List<String> directions){
+				  List<String> ingredients, List<String> directions, String email){
 		this.name = name;
 		this.category = category;
 		this.date = date;
 		this.description = description;
 		this.ingredients = ingredients;
 		this.directions = directions;
+		this.email = email;
 	}
 
 	public String getName() {

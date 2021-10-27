@@ -3,6 +3,8 @@ package task.recipe;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,6 +23,10 @@ public class RecipeService implements IRecipe{
 		this.repository = repository;
 	}
 
+	public List<Recipe> findAll() {
+		return repository.findAll();
+	}
+
 	@Override
 	public Optional<Recipe> findById(long id) {
 		return repository.findById(id);
@@ -30,16 +36,22 @@ public class RecipeService implements IRecipe{
 	public HashMap<String, Long> save(Recipe recipe) {
 		HashMap<String, Long> result = new HashMap<>();
 		recipe.setDate(LocalDateTime.now());
-		result.put("id", repository.save(recipe).getId());
+		result.put("id", repository.save(recipe).getId());;
 		return result;
 	}
 
 	@Override
 	public ResponseEntity<HttpStatus> deleteById(long id) {
 		Optional<Recipe> recipe = repository.findById(id);
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
 		recipe.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-		repository.deleteById(id);
-		return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+		if (auth.getName().equals(recipe.get().getEmail())) {
+			repository.deleteById(id);
+			if (!repository.findById(id).isPresent())
+				return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+		}
+		return new ResponseEntity<>(HttpStatus.FORBIDDEN);
 	}
 
 	@Override
