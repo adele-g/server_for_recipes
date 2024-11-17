@@ -1,17 +1,18 @@
-package task.recipe;
+package task.recipe.controller;
 
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import task.recipe.service.RecipeServiceImpl;
+import task.recipe.domain.User;
+import task.recipe.domain.Recipe;
+import task.recipe.service.UserServiceImpl;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
@@ -21,17 +22,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
+@AllArgsConstructor
 @RestController
 @RequestMapping("/api")
 public class RecipeController {
-	private final RecipeService service;
-	private final UserService userService;
+	private final RecipeServiceImpl service;
+	private final UserServiceImpl userServiceImpl;
 
-	@Autowired
-	public RecipeController(RecipeService service, UserService userService) {
-		this.service = service;
-		this.userService = userService;
-	}
+	public static final String CATEGORY = "category";
+	public static final String NAME = "name";
 
 	@GetMapping("/recipe/{id}")
 	public ResponseEntity<Recipe> getRecipe(@PathVariable("id") @Valid @Min(1) long id) {
@@ -46,15 +45,15 @@ public class RecipeController {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 		}
 		if (category.isPresent()) {
-			return service.searchByName(category.get(), "category");
+			return service.getByName(category.get(), CATEGORY);
 		}
-		return service.searchByName(name.get(), "name");
+		return service.getByName(name.get(), NAME);
 
 	}
 
 	@GetMapping("/recipe/users")
 	public List<User> users() {
-		return userService.getAllUsers();
+		return userServiceImpl.getAllUsers();
 	}
 
 	@GetMapping("/recipe/recipes")
@@ -64,7 +63,7 @@ public class RecipeController {
 
 	@PostMapping("/register")
 	public ResponseEntity<HttpStatus> register(@Valid @NotNull @NotBlank @RequestBody @Autowired User user) {
-		return userService.save(user);
+		return userServiceImpl.save(user);
 	}
 
 	@PostMapping("/recipe/new")
@@ -79,16 +78,9 @@ public class RecipeController {
 													@PathVariable("id") @Valid @Min(1) long id) {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-		Recipe recipeFromService = service.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-		if (auth.getName().equals(recipeFromService.getEmail())) {
-
-			recipeFromService.setName(recipe.getName());
-			recipeFromService.setCategory(recipe.getCategory());
-			recipeFromService.setDate(recipe.getDate());
-			recipeFromService.setDescription(recipe.getDescription());
-			recipeFromService.setIngredients(recipe.getIngredients());
-			recipeFromService.setDirections(recipe.getDirections());
-			service.save(recipeFromService);
+		Recipe recipeToUpdate = service.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+		if (auth.getName().equals(recipeToUpdate.getEmail())) {
+			service.updateRecipe(recipeToUpdate, recipe);
 			return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 		}
 		return new ResponseEntity<>(HttpStatus.FORBIDDEN);

@@ -1,4 +1,4 @@
-package task.recipe;
+package task.recipe.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -6,20 +6,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.ResponseStatusException;
+import task.recipe.domain.Recipe;
+import task.recipe.repository.RecipeRepository;
 
-import java.lang.reflect.Array;
 import java.time.LocalDateTime;
 import java.util.*;
 
-@Service
-public class RecipeService implements IRecipe{
+import static task.recipe.controller.RecipeController.CATEGORY;
+import static task.recipe.controller.RecipeController.NAME;
 
-	RecipeRepository repository;
+@Service
+public class RecipeServiceImpl implements task.recipe.interfaces.RecipeService {
+
+	final RecipeRepository repository;
 
 	@Autowired
-	public RecipeService(RecipeRepository repository) {
+	public RecipeServiceImpl(RecipeRepository repository) {
 		this.repository = repository;
 	}
 
@@ -35,36 +38,38 @@ public class RecipeService implements IRecipe{
 	@Override
 	public HashMap<String, Long> save(Recipe recipe) {
 		HashMap<String, Long> result = new HashMap<>();
+
 		recipe.setDate(LocalDateTime.now());
-		result.put("id", repository.save(recipe).getId());;
-		return result;
+		Recipe savedRecipe = repository.save(recipe);
+		result.put("id", savedRecipe.getId());
+        return result;
 	}
 
 	@Override
 	public ResponseEntity<HttpStatus> deleteById(long id) {
-		Optional<Recipe> recipe = repository.findById(id);
+		Recipe recipe = repository.
+				findById(id)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-		recipe.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-		if (auth.getName().equals(recipe.get().getEmail())) {
+		if (auth.getName().equals(recipe.getEmail())) {
 			repository.deleteById(id);
-			if (!repository.findById(id).isPresent())
+			if (repository.findById(id).isEmpty())
 				return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 		}
 		return new ResponseEntity<>(HttpStatus.FORBIDDEN);
 	}
 
 	@Override
-	public List<Recipe> searchByName(String name, String nameOfColumn) {
+	public List<Recipe> getByName(String name, String nameOfColumn) {
 		ArrayList<Recipe> result = new ArrayList<>();
 
 		repository.findAll().forEach(recipe -> {
-			if (nameOfColumn.equals("category")) {
+			if (nameOfColumn.equals(CATEGORY)) {
 				if (recipe.getCategory().equalsIgnoreCase(name)) {
 					result.add(recipe);
 				}
 			}
-			else if (nameOfColumn.equals("name")) {
+			else if (nameOfColumn.equals(NAME)) {
 				if (recipe.getName().toLowerCase().contains(name.toLowerCase())) {
 					result.add(recipe);
 				}
@@ -72,5 +77,20 @@ public class RecipeService implements IRecipe{
 		});
 		result.sort(Comparator.comparing(Recipe::getDate).reversed());
 		return result;
+	}
+
+	@Override
+	public void updateRecipe(Recipe recipeToUpdate, Recipe forUpdateRecipe) {
+		enrichRecipe(forUpdateRecipe, recipeToUpdate);
+		save(forUpdateRecipe);
+	}
+
+	private void enrichRecipe(Recipe recipe, Recipe recipeFromService) {
+		recipeFromService.setName(recipe.getName());
+		recipeFromService.setCategory(recipe.getCategory());
+		recipeFromService.setDate(recipe.getDate());
+		recipeFromService.setDescription(recipe.getDescription());
+		recipeFromService.setIngredients(recipe.getIngredients());
+		recipeFromService.setDirections(recipe.getDirections());
 	}
 }
